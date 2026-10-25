@@ -45,3 +45,11 @@ jobs:
       - run: docker build backend -t threadopt-backend
       - run: docker build ai-service -t threadopt-ai
       - run: docker build frontend -t threadopt-frontend
+      - name: Verify running Compose stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DB_PASSWORD=disposable-ci-only
+          trap 'docker compose -f infrastructure/compose.yaml logs --tail 40; docker compose -f infrastructure/compose.yaml down -v' EXIT
+          docker compose -f infrastructure/compose.yaml up -d --build
+          python experiments/container_smoke.py

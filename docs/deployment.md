@@ -20,6 +20,6 @@ For a private academic demonstration, enable Caddy `basic_auth` with a generated
 
 ## Release and rollback
 
-CI verifies Java, Python, TypeScript, and images. Deployment is deliberately manual until a repository, registry, server, and credentials are configured. Tag an approved commit; build and push immutable images for that tag; record the current image digests; update Compose to those digests and run `up -d`. Verify health, WebSockets, experiment execution, and persistence. Roll back by restoring the previous digests and running `up -d`. Back up PostgreSQL with pg_dump before releases; preserve the pgdata volume.
+CI verifies Java, Python, TypeScript, images, and a running Compose stack with PostgreSQL, ML and HTTP/HTTPS-proxy WebSocket handshakes. Deployment is deliberately manual until a repository, registry, server, and credentials are configured. Tag an approved commit; build and push immutable images for that tag; record the current image digests; update Compose to those digests and run `up -d`. Verify health, WebSockets, experiment execution, and persistence. Roll back by restoring the previous digests and running `up -d`. Back up PostgreSQL with pg_dump before releases; preserve the pgdata volume.
 
 No cloud account, domain, remote Git repository, or production credentials are configured by this project. Container runtime availability and real-server smoke tests are tracked in the validation report.
