@@ -1,0 +1,38 @@
+{
+  "python_version": "3.14.3",
+  "sklearn_version": "1.8.0",
+  "baseline_mean_predictor_mae_ms": 704.3716522727273,
+  "heldout_mean_p95_ms": 975.1259409722222,
+  "version": "measured-v1",
+  "features": [
+    "tasks",
+    "durationMs",
+    "io_ratio",
+    "workers",
+    "policy_code"
+  ],
+  "rows": 540,
+  "scenarios": 15,
+  "validation_mae_ms": 86.00704416656681,
+  "training_scenarios": [
+    "CPU-15",
+    "CPU-2",
+    "CPU-20",
+    "CPU-5",
+    "IO-10",
+    "IO-15",
+    "IO-2",
+    "IO-20",
+    "MIXED-10",
+    "MIXED-2",
+    "MIXED-5"
+  ],
+  "validation_scenarios": [
+    "CPU-10",
+    "IO-5",
+    "MIXED-15",
+    "MIXED-20"
+  ],
+  "objective": "P95 latency times (1 + 0.02 * workers)",
+  "limitation": "Local measurements; evaluate on target hardware before drawing conclusions"
+}
