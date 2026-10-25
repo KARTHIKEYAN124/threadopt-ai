@@ -2,6 +2,8 @@
 
 Source: https://github.com/KARTHIKEYAN124/threadopt-ai
 
+[![CI](https://github.com/KARTHIKEYAN124/threadopt-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/KARTHIKEYAN124/threadopt-ai/actions/workflows/ci.yml)
+
 A working scheduling laboratory: a custom Java platform-thread pool, Spring Boot experiment API, Python/scikit-learn advisor, and React/TypeScript live dashboard.
 
 ## Run locally

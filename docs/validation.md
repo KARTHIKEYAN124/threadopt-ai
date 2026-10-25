@@ -48,6 +48,10 @@ The final end-to-end ML check exposed an HTTP/2 upgrade mismatch between Java Ht
 
 ## Deployment limits
 
-Docker CLI is installed, but the Docker Desktop Linux engine socket is unavailable. Compose syntax can be checked without the engine, but images and PostgreSQL integration require Docker or remote CI. H2 is used for local execution. No public hosting target or domain has been supplied. Dockerfiles, Nginx, Caddy and VPS instructions are prepared; public HTTPS deployment is not claimed.
+Docker CLI is installed, but the Docker Desktop Linux engine socket is unavailable. Compose syntax passed locally. Remote GitHub Actions then built all three images and verified the running four-service stack, including PostgreSQL persistence, real task execution, trained-model inference and HTTP/HTTPS-proxy WebSocket upgrades. H2 is used for native local execution. No public hosting target or domain has been supplied. Dockerfiles, Nginx, Caddy and VPS instructions are prepared; public HTTPS deployment is not claimed.
 
 Automatic online adaptation, JMH microbenchmarks and multi-user account isolation are not implemented. Chromium was tested; Firefox/Safari and sustained multi-user load remain untested.
+
+## Remote CI evidence
+
+All four jobs (Java, Python, frontend, containers) passed for code commit `97636fa`. Run: https://github.com/KARTHIKEYAN124/threadopt-ai/actions/runs/40214940017 . The container smoke test passed through Nginx on the Docker network with PostgreSQL and the bundled trained model. Public hosting and real certificate/domain issuance remain pending.
