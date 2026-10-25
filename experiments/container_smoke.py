@@ -30,5 +30,5 @@ for origin,extra in [('http://127.0.0.1:3000',''),('https://127.0.0.1:3000','X-F
         key=base64.b64encode(os.urandom(16)).decode()
         headers=f'GET /ws/metrics HTTP/1.1\r\nHost: 127.0.0.1:3000\r\nOrigin: {origin}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n{extra}\r\n'
         connection.sendall(headers.encode());response=connection.recv(4096)
-        assert b'101' in response.split(b'\r\n',1)[0],response
+        assert b'101' in response.split(b'\r\n',1)[0],(origin,response)
 print('PASS: frontend, API, PostgreSQL persistence, real execution, trained ML, HTTP/HTTPS-proxy WebSocket upgrades')
