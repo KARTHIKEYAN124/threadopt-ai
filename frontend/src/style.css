@@ -619,3 +619,35 @@ footer {
 .form-grid > * {
   min-width: 0;
 }
+
+.run-context {
+  font-size: 12px;
+  color: #64717e;
+  margin: -4px 0 18px;
+  line-height: 1.6;
+}
+.create-dialog {
+  width: min(460px, calc(100% - 32px));
+  max-height: 90vh;
+  overflow: auto;
+  color: #13191e;
+}
+.create-dialog::backdrop {
+  background: #1119;
+}
+.create-dialog > .config {
+  border: 0;
+  padding: 18px 0 0;
+}
+.create-dialog > .config > h2 {
+  display: none;
+}
+.create-dialog form {
+  grid-template-columns: 1fr;
+}
+.create-dialog .form-grid {
+  grid-column: auto;
+}
+.create-dialog .config-note {
+  display: block;
+}

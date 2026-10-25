@@ -85,12 +85,23 @@ function App() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [advice, setAdvice] = useState<any>(null),
-    [selected, setSelected] = useState<Experiment | null>(null);
+    [selected, setSelected] = useState<Experiment | null>(null),
+    [creating, setCreating] = useState(false);
   const lastId = useRef("");
-  const taskInput = useRef<HTMLInputElement>(null);
+  const createDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (creating) createDialog.current?.showModal();
+    else createDialog.current?.close();
+  }, [creating]);
   const refresh = () =>
     api("/experiments")
-      .then(setRows)
+      .then((history: Experiment[]) => {
+        setRows(history);
+        const latest = history
+          .slice()
+          .sort((a, b) => b.createdAt - a.createdAt)[0];
+        if (latest) setLive((current) => current ?? latest);
+      })
       .catch((e) => setError(e.message));
   useEffect(() => {
     refresh();
@@ -128,7 +139,18 @@ function App() {
       };
     };
     connect();
+    // Keep the dashboard current even if the WebSocket connection is unavailable.
+    const poll = setInterval(() => {
+      api("/metrics/live")
+        .then((r) => {
+          if (stopped || !r.id) return;
+          setLive(r);
+          setRows((old) => [r, ...old.filter((x) => x.id !== r.id)]);
+        })
+        .catch(() => {});
+    }, 2000);
     return () => {
+      clearInterval(poll);
       stopped = true;
       clearTimeout(retry);
       socket.close();
@@ -141,6 +163,8 @@ function App() {
     try {
       const r = await api("/experiments", config);
       setLive(r);
+      setCreating(false);
+      setPage("Overview");
       setPoints([]);
       lastId.current = r.id;
       setAdvice(null);
@@ -184,6 +208,131 @@ function App() {
     a.click();
     URL.revokeObjectURL(url);
   }
+  const configuration = (
+    <section className="panel config">
+      <h2>Workload configuration</h2>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          run();
+        }}
+      >
+        <label>
+          Workload
+          <select
+            value={config.workload}
+            onChange={(e) => setConfig({ ...config, workload: e.target.value })}
+          >
+            <option value="MIXED">Mixed</option>
+            <option value="CPU">CPU-bound</option>
+            <option value="IO">I/O-bound</option>
+          </select>
+        </label>
+        <label>
+          Policy
+          <select
+            value={config.policy}
+            onChange={(e) => setConfig({ ...config, policy: e.target.value })}
+          >
+            <option>FIFO</option>
+            <option value="PRIORITY">Priority</option>
+            <option>SJF</option>
+          </select>
+        </label>
+        <div className="form-grid">
+          {(
+            [
+              { key: "tasks", label: "Tasks", min: 1, max: 1000 },
+              {
+                key: "workers",
+                label: "Workers",
+                min: 1,
+                max: 32,
+              },
+              {
+                key: "durationMs",
+                label: "Duration (ms)",
+                min: 1,
+                max: 100,
+              },
+              {
+                key: "seed",
+                label: "Seed",
+                min: 0,
+                max: 2147483647,
+              },
+            ] as const
+          ).map((f) => (
+            <label key={f.key}>
+              {f.label}
+              <input
+                type="number"
+                required
+                min={f.min}
+                max={f.max}
+                value={config[f.key]}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    [f.key]: e.target.valueAsNumber,
+                  })
+                }
+              />
+            </label>
+          ))}
+        </div>
+        <button className="full" type="submit" disabled={busy || running}>
+          <Play size={16} />
+          {running ? "Experiment runningâ€¦" : "Run experiment"}
+        </button>
+        <button
+          type="button"
+          className="secondary full"
+          disabled={busy || running}
+          onClick={recommend}
+        >
+          <Sparkles size={16} />
+          Recommend configuration
+        </button>
+        {running && (
+          <button
+            type="button"
+            className="cancel full"
+            onClick={() =>
+              api("/experiments/" + live.id + "/cancel", {})
+                .then(setLive)
+                .catch((e) => setError(e.message))
+            }
+          >
+            Cancel experiment
+          </button>
+        )}
+      </form>
+      {advice && (
+        <div className="advice">
+          <strong>
+            {advice.recommended_workers} workers Â· {advice.recommended_policy}
+          </strong>
+          <span>
+            {advice.source}
+            {advice.predicted_p95_latency_ms !== undefined
+              ? " Â· predicted P95 " +
+                number(advice.predicted_p95_latency_ms) +
+                " ms"
+              : ""}
+          </span>
+          <small>
+            Applied to the next run. Validate against measured results.
+          </small>
+        </div>
+      )}
+      <p className="config-note">
+        Bounded to 1,000 tasks and 32 workers.
+        <br />
+        Only one experiment runs at a time.
+      </p>
+    </section>
+  );
   return (
     <div className="app">
       <aside>
@@ -209,7 +358,7 @@ function App() {
         <div className="sidebar-bottom">
           <Cpu size={18} />
           <div>
-            Custom Java engine<small>Platform threads · Java 21</small>
+            Custom Java engine<small>Platform threads Â· Java 21</small>
           </div>
         </div>
       </aside>
@@ -226,9 +375,13 @@ function App() {
             </p>
           </div>
           <button
+            disabled={running || busy}
+            aria-label="New experiment"
             onClick={() => {
-              setPage("Overview");
-              setTimeout(() => taskInput.current?.focus(), 50);
+              setConfig({ ...initial });
+              setAdvice(null);
+              setError("");
+              setCreating(true);
             }}
           >
             <Plus size={19} />
@@ -302,12 +455,22 @@ function App() {
               <>
                 <section className="stats">
                   {[
-                    ["Workers", live?.pool.workers.length || 0],
-                    ["Queued", live?.pool.queued || 0],
-                    ["Completed", live?.metrics.completed || 0],
+                    [
+                      running ? "Workers" : "Configured workers",
+                      running
+                        ? live?.pool.workers.length || live?.config.workers
+                        : config.workers,
+                    ],
+                    ["Queued", running ? (live?.pool.queued ?? 0) : "Empty"],
+                    [
+                      running ? "Completed" : "Last run completed",
+                      live ? live.metrics.completed : "\u2014",
+                    ],
                     [
                       "Average wait",
-                      `${number(live?.metrics.averageWaitMs)} ms`,
+                      live
+                        ? `${number(live.metrics.averageWaitMs)} ms`
+                        : "\u2014",
                     ],
                   ].map(([label, value]) => (
                     <div className="stat" key={label}>
@@ -316,6 +479,13 @@ function App() {
                     </div>
                   ))}
                 </section>
+                <p className="run-context" role="status">
+                  {running
+                    ? `Running ${live.config.tasks} tasks with ${live.config.workers} workers.`
+                    : live
+                      ? "No experiment running. Showing the latest saved results; workers launch when you run a workload."
+                      : "Ready to run. Choose a workload or create a new experiment to launch workers."}
+                </p>
                 <div className="workspace">
                   <div className="monitor">
                     <section className="panel chart">
@@ -404,140 +574,7 @@ function App() {
                       )}
                     </section>
                   </div>
-                  <section className="panel config">
-                    <h2>Workload configuration</h2>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run();
-                      }}
-                    >
-                      <label>
-                        Workload
-                        <select
-                          value={config.workload}
-                          onChange={(e) =>
-                            setConfig({ ...config, workload: e.target.value })
-                          }
-                        >
-                          <option value="MIXED">Mixed</option>
-                          <option value="CPU">CPU-bound</option>
-                          <option value="IO">I/O-bound</option>
-                        </select>
-                      </label>
-                      <label>
-                        Policy
-                        <select
-                          value={config.policy}
-                          onChange={(e) =>
-                            setConfig({ ...config, policy: e.target.value })
-                          }
-                        >
-                          <option>FIFO</option>
-                          <option value="PRIORITY">Priority</option>
-                          <option>SJF</option>
-                        </select>
-                      </label>
-                      <div className="form-grid">
-                        {(
-                          [
-                            { key: "tasks", label: "Tasks", min: 1, max: 1000 },
-                            {
-                              key: "workers",
-                              label: "Workers",
-                              min: 1,
-                              max: 32,
-                            },
-                            {
-                              key: "durationMs",
-                              label: "Duration (ms)",
-                              min: 1,
-                              max: 100,
-                            },
-                            {
-                              key: "seed",
-                              label: "Seed",
-                              min: 0,
-                              max: 2147483647,
-                            },
-                          ] as const
-                        ).map((f) => (
-                          <label key={f.key}>
-                            {f.label}
-                            <input
-                              ref={f.key === "tasks" ? taskInput : undefined}
-                              type="number"
-                              required
-                              min={f.min}
-                              max={f.max}
-                              value={config[f.key]}
-                              onChange={(e) =>
-                                setConfig({
-                                  ...config,
-                                  [f.key]: e.target.valueAsNumber,
-                                })
-                              }
-                            />
-                          </label>
-                        ))}
-                      </div>
-                      <button
-                        className="full"
-                        type="submit"
-                        disabled={busy || running}
-                      >
-                        <Play size={16} />
-                        {running ? "Experiment running…" : "Run experiment"}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary full"
-                        disabled={busy || running}
-                        onClick={recommend}
-                      >
-                        <Sparkles size={16} />
-                        Recommend configuration
-                      </button>
-                      {running && (
-                        <button
-                          type="button"
-                          className="cancel full"
-                          onClick={() =>
-                            api("/experiments/" + live.id + "/cancel", {})
-                              .then(setLive)
-                              .catch((e) => setError(e.message))
-                          }
-                        >
-                          Cancel experiment
-                        </button>
-                      )}
-                    </form>
-                    {advice && (
-                      <div className="advice">
-                        <strong>
-                          {advice.recommended_workers} workers ·{" "}
-                          {advice.recommended_policy}
-                        </strong>
-                        <span>
-                          {advice.source}
-                          {advice.predicted_p95_latency_ms !== undefined
-                            ? " · predicted P95 " +
-                              number(advice.predicted_p95_latency_ms) +
-                              " ms"
-                            : ""}
-                        </span>
-                        <small>
-                          Applied to the next run. Validate against measured
-                          results.
-                        </small>
-                      </div>
-                    )}
-                    <p className="config-note">
-                      Bounded to 1,000 tasks and 32 workers.
-                      <br />
-                      Only one experiment runs at a time.
-                    </p>
-                  </section>
+                  {!creating && configuration}
                 </div>
               </>
             )}
@@ -591,7 +628,7 @@ function App() {
                             >
                               {r.id.slice(0, 8)}
                               <small>
-                                {r.config.workload} · {r.config.tasks} tasks
+                                {r.config.workload} Â· {r.config.tasks} tasks
                               </small>
                             </button>
                           </td>
@@ -626,6 +663,34 @@ function App() {
           <span>Measured execution. Reproducible comparisons.</span>
         </footer>
       </main>
+      <dialog
+        ref={createDialog}
+        className="panel create-dialog"
+        aria-labelledby="create-title"
+        onCancel={() => setCreating(false)}
+        onClose={() => setCreating(false)}
+      >
+        <div className="panel-heading">
+          <h2 id="create-title">New experiment</h2>
+          <button
+            type="button"
+            className="icon"
+            aria-label="Close new experiment"
+            onClick={() => setCreating(false)}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <p className="muted">
+          Configure your workload, then run it to start the worker pool.
+        </p>
+        {creating && configuration}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+      </dialog>
       {selected && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
           <section
