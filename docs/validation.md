@@ -55,3 +55,7 @@ Automatic online adaptation, JMH microbenchmarks and multi-user account isolatio
 ## Remote CI evidence
 
 All four jobs (Java, Python, frontend, containers) passed for code commit `97636fa`. Run: https://github.com/KARTHIKEYAN124/threadopt-ai/actions/runs/40214940017 . The container smoke test passed through Nginx on the Docker network with PostgreSQL and the bundled trained model. Public hosting and real certificate/domain issuance remain pending.
+
+## Idle metrics and new-experiment regression
+
+The dashboard shows configured workers while idle, an explicit Empty queue, and the latest saved result rather than treating missing/live-only observations as zero. HTTP polling backs up WebSocket updates. The header + button opens a native, keyboard-accessible configuration dialog instead of focusing Tasks. Targeted Playwright checks passed at 1440x1050 and 390x844: dialog creation/run/close, nonzero queue during real execution, completed-result persistence across reload, history without WebSockets, and no horizontal overflow or browser errors. The production build and full browser smoke flow also passed.

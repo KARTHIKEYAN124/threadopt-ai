@@ -283,7 +283,7 @@ function App() {
         </div>
         <button className="full" type="submit" disabled={busy || running}>
           <Play size={16} />
-          {running ? "Experiment runningâ€¦" : "Run experiment"}
+          {running ? "Experiment running…" : "Run experiment"}
         </button>
         <button
           type="button"
@@ -311,12 +311,12 @@ function App() {
       {advice && (
         <div className="advice">
           <strong>
-            {advice.recommended_workers} workers Â· {advice.recommended_policy}
+            {advice.recommended_workers} workers · {advice.recommended_policy}
           </strong>
           <span>
             {advice.source}
             {advice.predicted_p95_latency_ms !== undefined
-              ? " Â· predicted P95 " +
+              ? " · predicted P95 " +
                 number(advice.predicted_p95_latency_ms) +
                 " ms"
               : ""}
@@ -358,7 +358,7 @@ function App() {
         <div className="sidebar-bottom">
           <Cpu size={18} />
           <div>
-            Custom Java engine<small>Platform threads Â· Java 21</small>
+            Custom Java engine<small>Platform threads · Java 21</small>
           </div>
         </div>
       </aside>
@@ -628,7 +628,7 @@ function App() {
                             >
                               {r.id.slice(0, 8)}
                               <small>
-                                {r.config.workload} Â· {r.config.tasks} tasks
+                                {r.config.workload} · {r.config.tasks} tasks
                               </small>
                             </button>
                           </td>
